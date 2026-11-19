@@ -1,0 +1,45 @@
+# 内部工作日志（含真实环境信息，不公开）
+.workbuddy/
+
+# 构建产物与二进制
+build/
+*.img
+*.tar.gz
+*.apk
+*.raw
+
+# 第三方驱动二进制（失败路线的遗留，实测 NCM/RNDIS 在 Windows 报代码 28，不分发）
+*.sys
+
+# 编译产物
+*.o
+*.so
+*.a
+pmos-dash
+pwrkey-blank
+inject-pwrkey
+
+# SSH 私钥（绝不提交）
+id_rsa
+id_ed25519
+*.pem
+*.ppk
+
+# 备份数据
+backup/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+venv/
+pmb-venv/
+
+# 日志
+*.log

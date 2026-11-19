@@ -1,0 +1,8 @@
+#!/bin/sh
+# Power-key screen on/off toggle (short press <2s). Long press left to kernel.
+# Deploy: /etc/local.d/80-pwrkey.start  (chmod +x)
+# Kill any previous instance by explicit PID (pkill -x can miss during respawn).
+for p in $(pgrep -x pwrkey-blank); do kill -9 "$p" 2>/dev/null; done
+sleep 1
+echo 255 > /sys/class/backlight/1a94000.dsi.0/brightness
+nohup /usr/local/bin/pwrkey-blank >/var/log/pwrkey-blank.out 2>&1 &

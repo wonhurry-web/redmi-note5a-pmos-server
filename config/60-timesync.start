@@ -1,0 +1,5 @@
+#!/bin/sh
+# sync system time from NTP after network is up
+# Deploy: /etc/local.d/60-timesync.start  (chmod +x)
+sleep 20
+ntpd -q -n -p pool.ntp.org 2>/dev/null &

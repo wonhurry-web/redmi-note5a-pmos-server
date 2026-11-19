@@ -1,0 +1,52 @@
+#!/bin/sh
+# Auto-connect Wi-Fi at boot via wpa_supplicant + udhcpc.
+# Runs through the 'local' OpenRC service (already in default runlevel).
+# Deploy: /etc/local.d/50-wifi.start  (chmod +x)
+
+WPA_CONF=/etc/wpa_supplicant/wpa-auto.conf
+LOG=/var/log/wifiauto.log
+
+mkdir -p /etc/wpa_supplicant
+cat > "$WPA_CONF" <<'EOF'
+ctrl_interface=/var/run/wpa_supplicant
+update_config=1
+country=CN
+
+network={
+    ssid="<YOUR_WIFI_SSID>"
+    psk="<YOUR_WIFI_PASSWORD>"
+    key_mgmt=WPA-PSK
+}
+EOF
+chmod 600 "$WPA_CONF"
+
+# Wait for wlan0 to exist and firmware to be ready
+i=0
+while [ ! -e /sys/class/net/wlan0 ] && [ $i -lt 30 ]; do
+    sleep 2
+    i=$((i+1))
+done
+sleep 3
+
+# Stop NetworkManager so it doesn't fight for wlan0
+rc-service networkmanager stop >/dev/null 2>&1
+
+ip link set wlan0 up
+killall wpa_supplicant >/dev/null 2>&1
+sleep 1
+wpa_supplicant -B -i wlan0 -c "$WPA_CONF" -D nl80211
+
+# Wait for association
+state=""
+i=0
+while [ $i -lt 30 ]; do
+    state=$(wpa_cli -i wlan0 status 2>/dev/null | grep '^wpa_state=' | cut -d= -f2)
+    [ "$state" = "COMPLETED" ] && break
+    sleep 2
+    i=$((i+1))
+done
+
+killall udhcpc >/dev/null 2>&1
+udhcpc -i wlan0 -n
+
+echo "$(date '+%F %T'): wifi state=$state ip=$(ip -4 addr show wlan0 | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -1)" >> "$LOG"

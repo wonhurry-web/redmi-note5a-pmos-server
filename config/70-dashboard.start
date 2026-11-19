@@ -1,0 +1,12 @@
+#!/bin/sh
+# Start fullscreen framebuffer dashboard; keep SSH/serial login available.
+# Deploy: /etc/local.d/70-dashboard.start  (chmod +x)
+# Unbind fbcon so dashboard owns the framebuffer.
+[ -w /sys/class/vtconsole/vtcon1/bind ] && echo 0 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null
+# Stop tty1 getty so login prompt does not overwrite the dashboard
+kill $(cat /run/getty-tty1.pid 2>/dev/null) 2>/dev/null
+pkill -f "getty 38400 tty1" 2>/dev/null
+# Launch dashboard
+pkill -x pmos-dash 2>/dev/null
+sleep 1
+nohup /usr/local/bin/pmos-dash >/var/log/pmos-dash.log 2>&1 &

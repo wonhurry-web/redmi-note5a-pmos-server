@@ -1,0 +1,11 @@
+[pmbootstrap]
+# Copy to ~/.config/pmbootstrap_v3.cfg on the build host
+device = qcom-msm89x7
+kernel = edge
+ui = none
+# extra_packages 中后三个是 Wi-Fi 必需：wpa_supplicant 认证后端 + WCNSS 固件加载器
+extra_packages = openssh,networkmanager,avahi,docker,tmux,htop,nano,curl,wget,wpa_supplicant,wpa_supplicant-openrc,msm-firmware-loader-wcnss
+hostname = note5a-srv
+service_manager = openrc
+timezone = Asia/Shanghai
+work = /home/<BUILD_USER>/.local/var/pmbootstrap

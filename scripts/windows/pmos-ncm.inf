@@ -1,0 +1,50 @@
+;
+; postmarketOS USB NCM (VID_18D1 PID_D001) -> Windows built-in UsbNcm.sys
+;
+[Version]
+Signature="$WINDOWS NT$"
+Class=Net
+ClassGUID={4d36e972-e325-11ce-bfc1-08002be10318}
+Provider=%Msft%
+DriverVer = 04/21/2009,10.0.19041.1
+CatalogFile=pmosncm.cat
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+UsbNcm.sys  = 1,,
+
+[Manufacturer]
+%Msft%=Standard,NTamd64
+
+[Standard.NTamd64]
+%UsbNcm.DeviceDesc%=UsbNcm_Device,USB\VID_18D1&PID_D001&MI_00
+%UsbNcm.DeviceDesc%=UsbNcm_Device,USB\Class_02&SubClass_0d&Prot_00
+
+[UsbNcm_Device.NT]
+AddReg=UsbNcm_AddReg
+CopyFiles=Drivers_Dir
+BusType=15
+Characteristics=0x84
+*IfType=6
+*MediaType=0
+*PhysicalMediaType=0
+*IfConnectorPresent = 1
+*ConnectionType     = 1
+*DirectionType      = 0
+*AccessType         = 2
+*HardwareLoopback   = 0
+
+[Drivers_Dir]
+UsbNcm.sys
+
+[UsbNcm_AddReg]
+HKR, Ndi,            Service,    0, "UsbNcm"
+HKR, Ndi\Interfaces, UpperRange, 0, "ndis5"
+HKR, Ndi\Interfaces, LowerRange, 0, "ethernet"
+
+[Strings]
+Msft="Microsoft"
+UsbNcm.DeviceDesc="postmarketOS USB NCM"
+DiskName="postmarketOS NCM Install Disk"
