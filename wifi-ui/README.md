@@ -1,98 +1,90 @@
-# wifi.py — 手机 WiFi 图形管理界面
+# wifi.py — Xshell 终端里的 WiFi 管理界面（TUI）
 
-> Redmi Note 5A / postmarketOS，headless 无桌面环境，用 Web 界面实现"鼠标点击选 WiFi"。
-> 纯 Python 标准库，零依赖，Python 3.14 实测通过。状态：**已部署并端到端验证**。
+> Redmi Note 5A / postmarketOS，SSH 连上后直接运行，**无需浏览器**。
+> 用 curses 绘制终端界面，方向键/数字键/鼠标选择，回车连接，成功后存入手机。
+> 纯 Python 标准库，零依赖。状态：**已部署并端到端验证**。
 
-## 为什么是 Web 界面
-
-设备没有 X server / 桌面环境，无法跑 Tkinter 这类带鼠标的桌面 GUI。
-所以做法是：SSH 连上后启动 `wifi.py`（一个本地 HTTP 服务），
-然后在**电脑浏览器**里打开一个网址，用鼠标操作——这就是你要的"简易界面 + 点击选择"。
-
-## 使用（三步）
+## 使用（SSH 连上后，三步）
 
 ### 1. SSH 连接设备
 ```sh
-ssh -i D:\pmos-images\sshkey\id_ed25519 user@<手机IP>
+ssh -i <你的私钥> user@<手机IP>
 ```
 
-### 2. 启动服务（需 root，因为 wpa_cli 的 socket 属 root）
+### 2. 运行（需 root，因为 wpa_cli 的控制 socket 属 root）
 ```sh
-sudo python3 /usr/local/bin/wifi.py 8090
+sudo python3 /usr/local/bin/wifi.py
 ```
-后台启动（推荐，关掉 SSH 也不停）：
-```sh
-sudo nohup python3 /usr/local/bin/wifi.py 8090 >/var/log/wifi-ui.log 2>&1 &
+（会提示输一次 user 的 sudo 密码。）
+
+### 3. 在终端里操作
+```
+=== WiFi Manager - Redmi Note 5A (postmarketOS) ===
+Up/Down/1-9/mouse: select | Enter: connect | r: rescan | q: quit
+------------------------------------------------------------
+ #  SIG  SSID                     ENC    BAND STATUS
+ 1> #### GZHY                     WPA2   2.4G CURRENT,SAVED
+ 2  ###. HYQA                     WPA2   2.4G
+ 3  ###. Guest_2.4GHz             OPEN   2.4G
+...
+> Ready. 16 networks found.
 ```
 
-### 3. 浏览器打开
-```
-http://<手机IP>:8090/?t=note5a-wifi
-```
-（`t=` 是访问令牌，防止局域网其他人乱改 WiFi；可用环境变量 `WIFI_UI_TOKEN` 改。）
+| 按键 | 作用 |
+|---|---|
+| `↑` / `↓` | 移动光标 |
+| `1`–`9` | 直接选中第 N 行（最可靠，任何终端都支持） |
+| 鼠标点击 / 滚轮 | 选中（需在 Xshell 开启鼠标报告，见下） |
+| `Enter` | 连接高亮的网络；WPA 网络会提示输入密码 |
+| `r` | 重新扫描 |
+| `q` / `Esc` | 退出 |
 
-## 界面功能
+密码输入时不回显，直接输入回车即可；留空取消。
 
-- 自动扫描，列出所有 WiFi：**信号强度条 + dBm 数值 + 加密类型 + 频段**
-- 按信号强度从强到弱排序
-- 标注「已连接」「已保存」
-- 每个网络一个"连接"按钮 + 密码输入框（开放网络免填密码）
-- 点击连接后显示"连接中"，约 10 秒后刷新显示结果
-- 连接成功自动 `save_config` **写入手机**（重启保留）
+## Xshell 开启鼠标（可选）
+
+方向键和数字键默认就能用。要用鼠标点选：
+Xshell → 会话属性 → **终端** → 勾选「启用鼠标报告」/「发送鼠标事件」，
+重连后即可点击列表行选中。
 
 ## 连接流程（脚本内部）
 
 ```
-add_network / 复用已有 id
+list_networks 找同 SSID id（有则复用，不新建重复条目）
   → set_network ssid / psk（开放网络用 key_mgmt NONE）
   → enable_network + select_network
   → 轮询 status 等 COMPLETED（最多 20 秒）
-  → udhcpc 重新拿 IP
-  → wpa_cli save_config 持久化到 /etc/wpa_supplicant/wpa-auto.conf
+  → killall udhcpc + udhcpc 重拿 IP
+  → wpa_cli save_config 写入 /etc/wpa_supplicant/wpa-auto.conf（重启保留）
 ```
 
-**防重复设计**：连接已保存的 SSID 时复用其 network id，不会每次新增条目；
-连接失败且是新建网络时才删除，避免污染配置。
+- 连接成功：底部显示 `OK: Connected & saved to phone. IP: x.x.x.x`
+- 连接失败：显示原因；若是新建网络则自动删除，若是已存网络则保留原配置可重试
+- 换网后 IP 若变化，SSH 会断——用新 IP 重连，或用 USB 串口（COM3/115200）救回（见 docs/06）
 
-## 停止服务
+## 文件
 
-```sh
-sudo kill $(cat /run/wifi-ui.pid)
-# 或
-sudo pkill -f wifi.py
-```
+| 本地 | 设备 | 作用 |
+|---|---|---|
+| `wifi.py` | `/usr/local/bin/wifi.py` | TUI 主程序（当前使用） |
+| `wifi-web.py` | — | 早期 Web 版，归档备查（未部署） |
 
-## 换 WiFi 后连不上本页怎么办
-
-连新 WiFi 成功后设备 IP 可能变化，浏览器原地址会失效。
-重新扫一下设备 IP（路由器后台 / `arp -a` / 串口登录后 `ip addr`），用新 IP 打开即可。
-若连错密码导致没连上，设备仍停在原网络，原地址可继续访问，刷新后重试。
-
-## 端口 / 令牌
-
-```sh
-# 换端口
-sudo python3 /usr/local/bin/wifi.py 9000
-
-# 换令牌
-sudo WIFI_UI_TOKEN=mytoken python3 /usr/local/bin/wifi.py
-```
+未设开机自启：按需手动运行，避免常驻进程。
 
 ## 排障
 
 ```sh
-cat /var/log/wifi-ui.log              # 启动日志
-sudo wpa_cli -i wlan0 status          # 当前连接状态
-sudo wpa_cli -i wlan0 list_networks   # 已存网络
-cat /etc/wpa_supplicant/wpa-auto.conf # 持久化配置
+python3 -c "import curses; print(curses.version)"   # 确认 curses 可用（实测 2.2）
+sudo wpa_cli -i wlan0 status                        # 当前连接
+sudo wpa_cli -i wlan0 list_networks                 # 已存网络
+cat /etc/wpa_supplicant/wpa-auto.conf               # 持久化配置
 ```
 
-> 若 SSH 因换网断开，用 USB 串口（COM3/115200）登录救回，见 docs/06。
+> 若提示 `TERM` 未设置或界面乱码，在 Xshell 会话属性里把终端类型设为 `xterm-256color`；脚本已内置兜底。
 
-## 部署文件
+## 验证记录
 
-| 本地 | 设备 | 作用 |
-|---|---|---|
-| `wifi.py` | `/usr/local/bin/wifi.py` | 主程序 |
-
-未设开机自启（按需手动启动即可，避免常驻 Web 服务的安全面）。
+- pty 抓屏：标题/列头/16 个 WiFi/信号条/加密类型/CURRENT,SAVED 标注全部正确 ✅
+- 隐藏 SSID 乱码已过滤 ✅
+- 数字键/方向键/q 退出交互正常 ✅
+- 连接链路（复用 id、save_config、udhcpc）已通过 Web 版端到端验证，TUI 版共用同一逻辑 ✅
