@@ -40,7 +40,7 @@ echo "$(date +%F_%T) dockerd ready" >> $LOG
 cd /opt/dockersetup || exit 0
 docker-compose up -d nginx >/dev/null 2>&1
 if [ -f /opt/dockersetup/frpc/creds.env ] && ! grep -q "^TOKEN=REPLACE" /opt/dockersetup/frpc/creds.env 2>/dev/null; then
-    docker-compose up -d frpc >/dev/null 2>&1
+    docker-compose --env-file /opt/dockersetup/frpc/creds.env up -d frpc >/dev/null 2>&1
 fi
 NAMES=$(docker ps --format '{{.Names}}' 2>/dev/null | tr '\n' ' ')
 echo "$(date +%F_%T) containers: $NAMES" >> $LOG

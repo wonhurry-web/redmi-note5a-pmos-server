@@ -2,7 +2,7 @@
 
 > 实测时间：2026-11-20
 > 目标设备：Redmi Note 5A / postmarketOS edge / 主线内核 7.1.3-msm89x7 / aarch64
-> 状态：**评估通过，骨架已上线，冷启动验证成功**（frpc 待用户填 token）
+> 状态：**全链路打通**——frpc 已填 token，公网 HTTPS 访问返回 200（详见第九节）
 
 ---
 
@@ -121,11 +121,11 @@ TUNNEL_ID=你的隧道ID
 - 隧道 ID：控制台创建的隧道数字 ID；多隧道用英文逗号分隔（须同一节点）
 - 隧道在控制台配置为：类型 HTTP（或 TCP），本地端口 `8080`
 
-填完后启动 frpc：
+填完后启动 frpc（注意必须带 `--env-file`，原因见第九节）：
 
 ```sh
-cd /opt/dockersetup && docker-compose up -d frpc
-docker logs -f pmos-frpc      # 看到 login success / tunnel connected 即成功
+cd /opt/dockersetup && docker-compose --env-file ./frpc/creds.env up -d frpc
+docker logs -f pmos-frpc      # 看到 "TCP 隧道启动成功 / 使用 >>域名:端口<<" 即成功
 ```
 
 ### 5. 验收
@@ -133,7 +133,7 @@ docker logs -f pmos-frpc      # 看到 login success / tunnel connected 即成�
 ```sh
 curl http://127.0.0.1:8080/              # 看到 "nginx proxy is alive"
 docker-compose ps                        # nginx、frpc 均 Up
-# 外网访问樱花FRP 分配的域名/地址，应看到同一页面
+# 外网访问樱花FRP 分配的域名/地址，应看到同一页面（若开了 auto_https 需用 https://）
 ```
 
 ---
@@ -164,3 +164,66 @@ location /app/ {
 - **内核无 memory cgroup**：日志会有 `No memory limit support` 等警告，属主线内核限制，不影响容器运行，但 `docker run -m` 内存限制不生效。
 - **防火墙后端**：用 iptables（内核无完整 nft 工具），`nft: executable not found` 警告可忽略。
 - **frpc 自动启动**：`95-docker.start` 会检测 `creds.env` 里 token 是否还是占位符，是则跳过 frpc；填好后重启或手动 up 即可。
+
+---
+
+## 九、实战填 token 全链路打通记录（2026-11-20）
+
+首次填入真实 token 后，从「隧道连不上」到「公网 200」踩了三个坑，均为樱花FRP + 精简 frpc 镜像的特性，复现者必看。
+
+### 坑 1：frpc 镜像无 `/bin/sh`，compose 里不能用 shell 展开变量
+
+初版 compose 用 `entrypoint: [/bin/sh, -c, "exec frpc -f $$TOKEN:$$TUNNEL_ID -n"]`，
+容器启动直接报 `exec: "/bin/sh": stat /bin/sh: no such file or directory`。
+
+`natfrp/frpc:latest`（0.51）是精简镜像，里面**只有 /frpc 一个二进制，没有 shell**，
+`$$TOKEN` 这种依赖容器内 shell 展开的写法完全失效。
+
+**正解**：用 compose 层变量替换，把凭据作为 `--env-file` 在宿主机侧展开：
+
+```yaml
+# docker-compose.yml（frpc 服务）
+command: ["-f", "${TOKEN}:${TUNNEL_ID}", "-n"]   # 单 $，去掉 entrypoint
+```
+
+```sh
+docker-compose --env-file ./frpc/creds.env up -d frpc
+```
+
+`95-docker.start` 里也同样带 `--env-file`。这样凭据只留在 `creds.env`（已 gitignore），
+compose 文件可安全提交。
+
+### 坑 2：控制台 local_port 与 nginx 监听端口不一致 → 502
+
+隧道在樱花FRP 控制台的 `-f` 拉取配置里写死 `local_ip=127.0.0.1 / local_port=5436`，
+而本机 nginx 只监听 8080。frpc 解密后转发到 5436 时无人监听，
+公网返回 `502` + `dial tcp 127.0.0.1:5436: connect: connection refused`。
+
+**排查方法**：把 frpc 拉下来的配置导出看真实端口（不猜）：
+
+```sh
+docker run --rm --network host -v /tmp/f:/run/frpc \
+  natfrp/frpc:latest -f TOKEN:ID -n -w -c /run/frpc/frpc.ini
+cat /tmp/f/frpc.ini     # 看 local_port / remote_port / auto_https
+```
+
+**正解（二选一）**：
+- A：控制台把隧道本地端口改成 8080（最干净，但要去网页操作）；
+- B：本机对齐控制台——给 nginx 容器加一条 `"5436:80"` 端口映射，让 5436 落到 nginx。
+  本项目采用 B，无需动控制台，本地 8080 仍保留作验证入口。
+
+### 坑 3：控制台开了 `auto_https=auto`，HTTP 访问返回 501
+
+HTTP 访问公网地址得到 `501 Not Implemented`（`Server: SakuraFrp`），
+正文提示「您已为本隧道启用自动 HTTPS，使用 HTTP 访问是无意义的」。
+
+**正解**：公网入口必须用 `https://`，不能是 `http://`。frpc 会加载樱花FRP 下发的
+`*.你的子域` 证书（自签/自动续期），浏览器可能提示证书错误，可忽略或装证书。
+
+### 最终验收结果
+
+- 隧道启动日志：`TCP 隧道启动成功 / 使用 >>你的域名:端口<< 连接你的隧道`
+- 公网 `curl https://你的域名:端口/` → **HTTP 200 + `nginx proxy is alive`**（`Server: nginx/1.31.9`）
+- 常驻容器仅 `pmos-nginx` + `pmos-frpc`；`95-docker.start` 已同步 `--env-file` 写法，开机自启可用
+
+> 提示：本机 Windows 若开着 HTTP 代理，用 `curl --noproxy '*'` 绕过，否则会误判连通性。
