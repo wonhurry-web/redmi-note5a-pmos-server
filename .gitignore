@@ -25,6 +25,9 @@ id_ed25519
 *.pem
 *.ppk
 
+# 樱花FRP 真实凭据（只提交 .example 占位符模板）
+docker-setup/frpc/creds.env
+
 # 备份数据
 backup/
 

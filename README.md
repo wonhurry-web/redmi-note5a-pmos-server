@@ -36,6 +36,7 @@
 | 5 | [`docs/07-设备端配置参考.md`](docs/07-设备端配置参考.md) | 全部 `local.d` 脚本、Wi-Fi/gadget/仪表盘配置模板 |
 | 6 | [`dashboard/README.md`](dashboard/README.md) | 仪表盘与电源键守护进程的编译、部署、抓图 |
 | 7 | [`docs/04-运维与故障排查.md`](docs/04-运维与故障排查.md) | 功耗、存储、日常运维、回滚、常见问题 |
+| 8 | [`docs/08-Docker樱花FRP内网穿透.md`](docs/08-Docker樱花FRP内网穿透.md) | 设备上跑 Docker + nginx 反代 + 樱花FRP 单隧道穿透（含 cgroup v1 关键坑） |
 
 `docs/05-已实施-Android原生chroot服务器.md` 是**备选/历史方案**，仅在无法刷机时参考。
 
