@@ -7,6 +7,9 @@ WPA_CONF=/etc/wpa_supplicant/wpa-auto.conf
 LOG=/var/log/wifiauto.log
 
 mkdir -p /etc/wpa_supplicant
+# 仅在配置不存在时生成默认模板；已存在的配置绝不覆盖。
+# 这样用户往 wpa-auto.conf 里添加的其他 WiFi 网络在重启后不会被冲掉。
+if [ ! -s "$WPA_CONF" ]; then
 cat > "$WPA_CONF" <<'EOF'
 ctrl_interface=/var/run/wpa_supplicant
 update_config=1
@@ -18,6 +21,7 @@ network={
     key_mgmt=WPA-PSK
 }
 EOF
+fi
 chmod 600 "$WPA_CONF"
 
 # Wait for wlan0 to exist and firmware to be ready

@@ -2,8 +2,18 @@ ctrl_interface=/var/run/wpa_supplicant
 update_config=1
 country=CN
 
+# 可添加多个 network 块。wpa_supplicant 会自动扫描并存者优先连接信号最好的已配置网络；
+# 如需指定优先级，可在 network 块里加 priority=N（数字越大优先级越高）。
 network={
     ssid="<YOUR_WIFI_SSID>"
     psk="<YOUR_WIFI_PASSWORD>"
     key_mgmt=WPA-PSK
 }
+
+# 示例：添加第二个 WiFi（去掉注释、替换占位符即可）
+# network={
+#     ssid="<SECOND_WIFI_SSID>"
+#     psk="<SECOND_WIFI_PASSWORD>"
+#     key_mgmt=WPA-PSK
+#     priority=1
+# }
