@@ -8,6 +8,7 @@
 | `60-timesync.start` | `/etc/local.d/60-timesync.start` | NTP 对时 |
 | `70-dashboard.start` | `/etc/local.d/70-dashboard.start` | 仪表盘自启 |
 | `80-pwrkey.start` | `/etc/local.d/80-pwrkey.start` | 电源键亮灭屏守护进程 |
+| `90-rproc-off.start` | `/etc/local.d/90-rproc-off.start` | 省电：停掉无用 modem/DSP 协处理器（保留 Wi-Fi）。仅 headless 不用移动数据时部署 |
 | `wpa-auto.conf.example` | `/etc/wpa_supplicant/wpa-auto.conf` | Wi-Fi 凭据（若不用 50-wifi.start 自动生成） |
 | `pmbootstrap_v3.cfg.example` | `~/.config/pmbootstrap_v3.cfg`（构建主机） | pmbootstrap 构建配置 |
 

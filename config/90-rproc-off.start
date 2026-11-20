@@ -1,0 +1,17 @@
+#!/bin/sh
+# Stop unused cellular modem + audio DSP to save battery.
+# Keep WCNSS (Wi-Fi/BT) running: SSH depends on it.
+# Identify by firmware name, NOT by remoteproc index (index may vary across boots).
+for r in /sys/class/remoteproc/remoteproc*; do
+    [ -d "$r" ] || continue
+    fw=$(cat "$r/firmware" 2>/dev/null)
+    case "$fw" in
+        mba.mbn|adsp.mdt)
+            st=$(cat "$r/state" 2>/dev/null)
+            if [ "$st" = "running" ]; then
+                echo stop > "$r/state" 2>/dev/null
+                echo "$(date +%F_%T) stopped $r fw=$fw" >> /var/log/rproc-off.log
+            fi
+            ;;
+    esac
+done
