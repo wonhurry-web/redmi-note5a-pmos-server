@@ -1,0 +1,28 @@
+name: daidai-panel
+services:
+  daidai-panel:
+    image: linzixuanzz/daidai-panel:latest
+    container_name: daidai-panel
+    restart: unless-stopped
+    # 只绑定回环地址：面板仅由同机 nginx 反代对外，不直接暴露到局域网/公网
+    ports:
+      - "127.0.0.1:5700:5700"
+    volumes:
+      # 面板业务数据（数据库/脚本/配置），升级保留
+      - ./Dumb-Panel:/app/Dumb-Panel
+    environment:
+      - TZ=Asia/Shanghai
+      - CONTAINER_NAME=daidai-panel
+      - IMAGE_NAME=linzixuanzz/daidai-panel:latest
+      # 不用 Watchtower（设备内存有限）；面板内「检查更新」走手动 docker pull
+      - PANEL_UPDATE_MANAGER=
+    networks:
+      - default
+      - proxy-net
+
+networks:
+  default: {}
+  # 与 nginx 共享的外部网络，使 nginx 可用容器名 daidai-panel:5700 反代
+  proxy-net:
+    name: dockersetup_proxy-net
+    external: true
