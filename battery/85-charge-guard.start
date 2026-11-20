@@ -1,0 +1,16 @@
+#!/bin/sh
+# /etc/local.d/85-charge-guard.start  —— 电池充电保护守护自启
+LOG=/var/log/autostart-trace.log
+
+# 幂等：按完整路径匹配，杀掉旧实例
+if [ -f /run/charge-guard.pid ]; then
+    oldpid=$(cat /run/charge-guard.pid 2>/dev/null)
+    if [ -n "$oldpid" ] && kill -0 "$oldpid" 2>/dev/null; then
+        kill "$oldpid" 2>/dev/null
+        sleep 1
+    fi
+fi
+
+nohup /usr/local/bin/charge-guard >/dev/null 2>&1 &
+echo $! > /run/charge-guard.pid
+echo "$(date +%F_%T) charge-guard started pid=$!" >> "$LOG"
