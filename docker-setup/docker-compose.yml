@@ -9,6 +9,9 @@ services:
       # 樱花FRP 控制台把隧道 local_port 设为 5436，auto_https 解密后转发到此端口。
       # 让 5436 也落到 nginx，无需改控制台（若控制台 local_port 改成 8080 可删此行）。
       - "5436:80"
+      # Halo 独立入口：新隧道 36005 -> 127.0.0.1:5437 -> 容器 5437。
+      # Halo 2.x console 硬编码 /console/ base，必须独占根路径，不能挂 /halo/ 子路径。
+      - "5437:5437"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
