@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<!--
+  Halo 页面布局契约 (page layout contract) 适配片段。
+  从 Halo 2.26.0 起，主题提供 templates/layout.html 并声明 html(head, content)
+  片段后，Console 的 Theme.status.pageLayout 会从 MISSING 变为 SUPPORTED，
+  插件渲染的独立前台页面可复用主题外壳，不再走 Halo 内置 fallback 布局。
+
+  检测为静态正则匹配 th:fragment="html (head, content)"，因此这里严格按该签名声明。
+  everus 主题自身页面均为完整 HTML（自带 head/body），本文件只服务“布局契约”调用方，
+  不改变主题原有页面的渲染。
+-->
+<html lang="zh-CN" th:lang="${#locale.toLanguageTag()}" xmlns:th="https://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- head 由调用方提供：标题、meta、页面专属资源 -->
+    <th:block th:replace="${head}"></th:block>
+  </head>
+  <body>
+    <!-- content 由调用方提供：正文片段 -->
+    <th:block th:replace="${content}"></th:block>
+    <!-- 保留 Halo 底部注入点（脚本/统计等由 Halo 追加） -->
+    <halo:footer />
+  </body>
+</html>
