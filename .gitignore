@@ -46,3 +46,8 @@ pmb-venv/
 
 # 日志
 *.log
+
+# Halo 真实公网地址（含域名/token）
+halo/halo.env
+halo/halo2/
+tools/touch-probe.py.bak

@@ -1,0 +1,32 @@
+# Halo 2.27 社区版（arm64）+ H2 内置数据库（单容器，省内存）
+# 部署目录：/opt/halo/    工作目录：/opt/halo/halo2/（备份放 halo2/backups/）
+services:
+  halo:
+    image: registry.fit2cloud.com/halo/halo:2.27
+    container_name: pmos-halo
+    restart: on-failure:3
+    stop_grace_period: 120s
+    networks:
+      - dockersetup_proxy-net
+    volumes:
+      - ./halo2:/root/.halo2
+    ports:
+      - "127.0.0.1:8090:8090"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    environment:
+      # 这台设备共 1.8G 内存，可用约 1G；256M 堆 + 系统开销足够
+      - JVM_OPTS=-Xmx256m -Xms256m
+    command:
+      # 外部访问地址：完整路径，Halo 前端资源/API 会基于此生成（含 /halo/ 前缀）
+      - --halo.external-url=${HALO_EXTERNAL_URL:-http://127.0.0.1:8090/}
+      # 静态资源用协商缓存，避免反代后更新不生效
+      - --spring.web.resources.cache.cachecontrol.no-cache=true
+
+networks:
+  dockersetup_proxy-net:
+    external: true
